@@ -59,7 +59,7 @@ type ActivityPoint = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function durationSeconds(start: Date, end: Date): number {
-  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000));
+  return Math.max(0, Math.round((end?.getTime() - start?.getTime()) / 1000));
 }
 
 function formatDuration(secs: number): string {
@@ -85,7 +85,7 @@ function formatPace(distanceMeters: number, durationSecs: number): string {
 }
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDate(date: Date): string {
@@ -190,8 +190,8 @@ function ActivityCard({
   activity: Activity;
   points: ActivityPoint[];
 }) {
-  const startedAt = activity.startedAt.toDate();
-  const endedAt = activity.endedAt.toDate();
+  const startedAt = activity.startedAt?.toDate();
+  const endedAt = activity.endedAt?.toDate();
   const secs = durationSeconds(startedAt, endedAt);
   const actPoints = points
     .filter((p) => p.activityId === activity.id)
@@ -311,7 +311,7 @@ function SummaryHeader({ activities }: { activities: Activity[] }) {
   const totalDist = activities.reduce((s, a) => s + (a.distanceMeters ?? 0), 0);
   const totalArea = activities.reduce((s, a) => s + (a.capturedArea ?? 0), 0);
   const totalDuration = activities.reduce(
-    (s, a) => s + durationSeconds(a.startedAt.toDate(), a.endedAt.toDate()),
+    (s, a) => s + durationSeconds(a.startedAt?.toDate(), a.endedAt?.toDate()),
     0
   );
 
@@ -398,7 +398,7 @@ export default function ActivitiesScreenLight() {
   const error = userError || activitiesError || pointsError;
 
   const sorted = [...activities].sort(
-    (a, b) => b.startedAt.toDate().getTime() - a.startedAt.toDate().getTime()
+    (a, b) => b.startedAt?.toDate()?.getTime() - a.startedAt?.toDate()?.getTime()
   );
 
   return (
