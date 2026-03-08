@@ -3,53 +3,80 @@ import MapView, { Polygon } from 'react-native-maps';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as Location from 'expo-location';
 import { Text } from '@/components/ui/text';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { collection, addDoc, doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/lib/firebase';
+import { MapPin, Radio, Square, Navigation } from 'lucide-react-native';
 
-const polygonCoords = [
-  { latitude: 37.78825, longitude: -122.4324 },
-  { latitude: 38.75825, longitude: -122.4324 },
-  { latitude: 39.75825, longitude: -123.4324 },
-  { latitude: 37.75825, longitude: -123.4324 },
-];
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+const T = {
+  bg: '#F5F5F5',
+  card: '#ECECEC',
+  cardInner: '#E0E0E0',
+  border: '#D5D5D5',
+  textPrimary: '#0A0A0A',
+  textMid: '#555555',
+  textMuted: '#888888',
+  iconMuted: '#C8C8C8',
+  accentGreen: '#A3E635',
+  accentBlue: '#60A5FA',
+  greenBadge: 'rgba(163,230,53,0.18)',
+  blueBadge: 'rgba(96,165,250,0.18)',
+} as const;
+
+// ── Stat pill ─────────────────────────────────────────────────────────────────
+
+function StatPill({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={[styles.statPill, { backgroundColor: T.cardInner }]}>
+      <View style={styles.statPillHeader}>
+        {icon}
+        <Text style={[styles.statLabel, { color: T.textMid }]}>{label}</Text>
+      </View>
+      <Text style={[styles.statValue, { color: T.textPrimary }]}>{value}</Text>
+    </View>
+  );
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function Screen() {
-  const [coords, setCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [activityId, setActivityId] = useState<string | null>(null);
+  const [pointCount, setPointCount] = useState(0);
+  const [elapsedSecs, setElapsedSecs] = useState(0);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sequenceRef = useRef(1);
   const startedAtRef = useRef<Timestamp | null>(null);
 
   useEffect(() => {
-    const getLocation = async () => {
+    (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== 'granted') {
-        console.log('Location permission denied');
-        return;
-      }
-
+      if (status !== 'granted') return;
       const position = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = position.coords;
-      setCoords({ latitude, longitude });
-    };
-
-    getLocation();
+      setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+    })();
   }, []);
+
+  const formatElapsed = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   const startRecording = async () => {
     const auth = getAuth();
@@ -57,8 +84,9 @@ export default function Screen() {
 
     startedAtRef.current = Timestamp.now();
     sequenceRef.current = 1;
+    setPointCount(0);
+    setElapsedSecs(0);
 
-    // Create the activity document
     const activityRef = await addDoc(collection(db, 'activities'), {
       activityType: 'run',
       capturedArea: 0,
@@ -70,14 +98,15 @@ export default function Screen() {
     });
 
     const newActivityId = activityRef.id;
-
-    // Update the doc to include its own id field
     await setDoc(doc(db, 'activities', newActivityId), { id: newActivityId }, { merge: true });
 
     setActivityId(newActivityId);
     setIsRecording(true);
 
-    // Write a point every second
+    // Elapsed timer
+    timerRef.current = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
+
+    // GPS point writer
     intervalRef.current = setInterval(async () => {
       try {
         const position = await Location.getCurrentPositionAsync({});
@@ -89,12 +118,10 @@ export default function Screen() {
           sequence: sequenceRef.current,
         });
 
-        // Update point doc to include its own id
         await setDoc(doc(db, 'points', pointRef.id), { id: pointRef.id }, { merge: true });
 
         sequenceRef.current += 1;
-
-        // Live-update coords on map
+        setPointCount((c) => c + 1);
         setCoords({ latitude, longitude });
       } catch (err) {
         console.error('Error writing point:', err);
@@ -103,10 +130,8 @@ export default function Screen() {
   };
 
   const stopRecording = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
     if (activityId) {
       await setDoc(
@@ -121,18 +146,13 @@ export default function Screen() {
     sequenceRef.current = 1;
   };
 
-  const handleRecordToggle = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
+  const handleRecordToggle = () => isRecording ? stopRecording() : startRecording();
 
   if (!coords) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={[styles.container, { backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+        <Navigation size={32} color={T.iconMuted} />
+        <Text style={{ color: T.textMuted, fontSize: 15 }}>Acquiring location…</Text>
       </View>
     );
   }
@@ -141,71 +161,189 @@ export default function Screen() {
     <View style={styles.container}>
       <MapView
         style={{ flex: 1 }}
-        showsUserLocation={true}
+        showsUserLocation
         initialRegion={{
-          latitude: coords?.latitude || 37.78825,
-          longitude: coords?.longitude || -122.4324,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
-        }}>
-        <View className="absolute bottom-0 left-0 right-0 m-3 mb-20">
-          <Card className="bottom-0 m-3 justify-items-end">
-            <CardHeader>
-              <CardTitle>Start your Journey</CardTitle>
-              <CardDescription>
-                {isRecording ? 'Recording in progress...' : 'Ready to record your activity'}
-              </CardDescription>
-            </CardHeader>
+        }}
+      />
 
-            <CardContent>
-              <Text>
-                {isRecording
-                  ? `Points captured: ${sequenceRef.current - 1}`
-                  : 'Press record to start tracking'}
-              </Text>
-            </CardContent>
+      {/* Floating card */}
+      <View style={styles.cardWrapper}>
+        <View style={[styles.card, { backgroundColor: T.card }]}>
 
-            <CardFooter>
-              <TouchableOpacity
-                onPress={handleRecordToggle}
-                style={[styles.recordButton, isRecording ? styles.stopButton : styles.startButton]}>
-                <Text style={styles.recordButtonText}>
-                  {isRecording ? '⏹  Stop Recording' : '⏺  Start Recording'}
+          {/* Green accent bar */}
+          <View style={[styles.accentBar, { backgroundColor: T.accentGreen }]} />
+
+          <View style={styles.cardBody}>
+            {/* Header */}
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={[styles.cardTitle, { color: T.textPrimary }]}>
+                  {isRecording ? 'Recording…' : 'Start your Journey'}
                 </Text>
-              </TouchableOpacity>
-            </CardFooter>
-          </Card>
+                <Text style={[styles.cardSubtitle, { color: T.textMid }]}>
+                  {isRecording
+                    ? 'GPS tracking active'
+                    : 'Ready to record your activity'}
+                </Text>
+              </View>
+
+              {/* Live indicator */}
+              {isRecording && (
+                <View style={[styles.liveBadge, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Stats */}
+            <View style={styles.statsRow}>
+              <StatPill
+                icon={<MapPin size={13} color={T.accentGreen} />}
+                label="GPS Points"
+                value={`${pointCount}`}
+              />
+              <StatPill
+                icon={<Radio size={13} color={T.accentBlue} />}
+                label="Elapsed"
+                value={isRecording ? formatElapsed(elapsedSecs) : '—'}
+              />
+            </View>
+
+            {/* Button */}
+            <TouchableOpacity
+              onPress={handleRecordToggle}
+              activeOpacity={0.85}
+              style={[
+                styles.recordButton,
+                {
+                  backgroundColor: isRecording ? T.cardInner : T.accentGreen,
+                  borderWidth: isRecording ? 1.5 : 0,
+                  borderColor: isRecording ? T.border : 'transparent',
+                },
+              ]}
+            >
+              {isRecording
+                ? <Square size={16} color={T.textPrimary} />
+                : <Radio size={16} color="#0A0A0A" />
+              }
+              <Text
+                style={[
+                  styles.recordButtonText,
+                  { color: isRecording ? T.textPrimary : '#0A0A0A' },
+                ]}
+              >
+                {isRecording ? 'Stop Recording' : 'Start Recording'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </MapView>
+      </View>
     </View>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  map: {
-    width: '100%',
-    height: '100%',
+  cardWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 90,
+  },
+  card: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  accentBar: {
+    height: 3,
+  },
+  cardBody: {
+    padding: 16,
+    gap: 14,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
+    letterSpacing: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statPill: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  statPillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   recordButton: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  startButton: {
-    backgroundColor: '#ef4444', // red-500
-  },
-  stopButton: {
-    backgroundColor: '#6b7280', // gray-500
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
   recordButtonText: {
-    color: '#ffffff',
+    fontSize: 15,
     fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });
