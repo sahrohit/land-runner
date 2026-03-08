@@ -1,9 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { db } from '@/lib/firebase';
 import { Link, Stack } from 'expo-router';
-import { addDoc, collection } from 'firebase/firestore';
 import { MoonStarIcon, StarIcon, SunIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
@@ -30,7 +28,7 @@ export default function Screen() {
 
   return (
     <>
-      <Stack.Screen options={SCREEN_OPTIONS} />
+      {/* <Stack.Screen options={SCREEN_OPTIONS} /> */}
       <View className="flex-1 items-center justify-center gap-8 p-4">
         <Image source={LOGO[colorScheme ?? 'light']} style={IMAGE_STYLE} resizeMode="contain" />
         <View className="gap-2 p-4">
@@ -47,24 +45,12 @@ export default function Screen() {
               <Text>Browse the Docs</Text>
             </Button>
           </Link>
-
-          <Button
-            variant="ghost"
-            onTouchEnd={async () => {
-              try {
-                const docRef = await addDoc(collection(db, 'users'), {
-                  first: 'Ada',
-                  last: 'Lovelace',
-                  born: 1815,
-                });
-                console.log('Document written with ID: ', docRef.id);
-              } catch (e) {
-                console.error('Error adding document: ', e);
-              }
-            }}>
-            <Text>Star the Repo</Text>
-            <Icon as={StarIcon} />
-          </Button>
+          <Link href="https://github.com/founded-labs/react-native-reusables" asChild>
+            <Button variant="ghost">
+              <Text>Star the Repo</Text>
+              <Icon as={StarIcon} />
+            </Button>
+          </Link>
         </View>
       </View>
     </>
