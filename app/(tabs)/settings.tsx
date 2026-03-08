@@ -8,9 +8,27 @@ import { StarIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { Image, View } from 'react-native';
+import { useCollection } from 'react-firebase-hooks/firestore';
 
 export default function Screen() {
   const { colorScheme } = useColorScheme();
+
+  const [value, loading, error] = useCollection(collection(db, 'users'), {
+    snapshotListenOptions: { includeMetadataChanges: true },
+  });
+
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  console.log(
+    'Firestore Collection Data:',
+    value?.docs.map((doc) => doc.data())
+  );
 
   return (
     <View className="flex-1 items-center justify-center gap-8 p-4">

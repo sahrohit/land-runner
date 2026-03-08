@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
+import { AuthProvider } from '@/context/AuthContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -19,15 +20,17 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
       {/* <StatusBar hidden={true} style={colorScheme === 'dark' ? 'light' : 'dark'} /> */}
-      <Stack>
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
-        />
-      </Stack>
-      <PortalHost />
+      <AuthProvider>
+        <Stack>
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack>
+        <PortalHost />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

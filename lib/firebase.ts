@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+// @ts-ignore: getReactNativePersistence exists in the RN bundle.
+import { initializeAuth, getAuth, getReactNativePersistence, Auth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_API_KEY,
@@ -14,3 +17,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
+
+// Prevent re-initializing auth during fast refresh
+let auth: Auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch {
+  auth = getAuth(app);
+}
+
+export { auth };

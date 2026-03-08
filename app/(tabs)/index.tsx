@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useAuth } from '@/context/AuthContext';
 import { Link, Stack } from 'expo-router';
 import { MoonStarIcon, StarIcon, SunIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -25,6 +26,7 @@ const IMAGE_STYLE: ImageStyle = {
 
 export default function Screen() {
   const { colorScheme } = useColorScheme();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -33,10 +35,7 @@ export default function Screen() {
         <Image source={LOGO[colorScheme ?? 'light']} style={IMAGE_STYLE} resizeMode="contain" />
         <View className="gap-2 p-4">
           <Text className="ios:text-foreground font-mono text-sm text-muted-foreground">
-            1. Edit <Text variant="code">app/index.tsx</Text> to get started.
-          </Text>
-          <Text className="ios:text-foreground font-mono text-sm text-muted-foreground">
-            2. Save to see your changes instantly.
+            {user ? `Welcome, ${user.email}!` : 'You are not logged in.'}
           </Text>
         </View>
         <View className="flex-row gap-2">
