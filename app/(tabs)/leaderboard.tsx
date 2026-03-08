@@ -318,7 +318,7 @@ export default function LeaderboardScreen() {
   const activities = (activitiesRaw ?? []) as Activity[];
 
   const dailyLeaderboard = useMemo(() => {
-    const todayActivities = activities.filter((a) => isToday(a.startedAt.toDate()));
+    const todayActivities = activities.filter((a) => isToday(a.startedAt?.toDate()));
     return buildLeaderboard(todayActivities);
   }, [activities]);
 
