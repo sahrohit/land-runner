@@ -7,13 +7,6 @@ import { useCollectionData } from 'react-firebase-hooks/firestore';
 import { collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const polygonCoords = [
-  { latitude: 37.78825, longitude: -122.4324 },
-  { latitude: 38.75825, longitude: -122.4324 },
-  { latitude: 39.75825, longitude: -123.4324 },
-  { latitude: 37.75825, longitude: -123.4324 },
-];
-
 export default function Screen() {
   const [pointsData, pointsLoading, pointsError] = useCollectionData(collection(db, 'points'), {
     snapshotListenOptions: { includeMetadataChanges: true },
@@ -62,16 +55,6 @@ export default function Screen() {
     );
   }
 
-  console.log(
-    'Points Values',
-    pointsData?.map((doc) => doc)
-  );
-
-  console.log(
-    'Activity Values',
-    activityData?.map((doc) => doc)
-  );
-
   return (
     <View style={styles.container}>
       <MapView
@@ -99,7 +82,7 @@ export default function Screen() {
             <Polygon
               key={activity.id}
               coordinates={coordinates}
-              fillColor={`rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.5)`}
+              fillColor={`rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.7)`}
               strokeColor="blue"
               strokeWidth={2}
               tappable={true}
@@ -107,15 +90,6 @@ export default function Screen() {
             />
           );
         })}
-        {/* 
-        <Polygon
-          coordinates={polygonCoords}
-          fillColor="rgba(255, 0, 0, 0.5)" //
-          strokeColor="red" //
-          strokeWidth={2}
-          tappable={true} //
-          onPress={() => console.log('Pressed')}
-        /> */}
       </MapView>
     </View>
   );
